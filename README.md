@@ -156,6 +156,8 @@ lib/
   playbook.ts                revenue playbook content
   guides.ts                  editorial
 docs/monetisation.md         the strategy, in full
+docs/deploy.md               deploy + Postgres setup
+docs/stack.md                database/hosting decisions and costs
 ```
 
 ## Deploy — and shipping the console separately
@@ -171,7 +173,8 @@ One codebase, but the console can be its own deployment. `ADMIN_ENABLED="false"`
 
 Import the same repo twice in Vercel, set those two env vars, and (optionally) add Vercel Deployment
 Protection to the console project. Full recipe, plus a true monorepo split and the persistence
-recipe, and the Postgres setup: [`docs/deploy.md`](docs/deploy.md).
+recipe, and the Postgres setup: [`docs/deploy.md`](docs/deploy.md). Why Neon + Vercel (and what
+would make us move to Cloudflare): [`docs/stack.md`](docs/stack.md).
 
 ```bash
 npx vercel        # preview
