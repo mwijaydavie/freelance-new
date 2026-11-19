@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next"
 
-import { collections, products } from "@/lib/products"
+import { listCollections, listProducts } from "@/lib/catalog"
 import { guides } from "@/lib/guides"
 
 const BASE = "https://genie.reviews"
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic"
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
+  const [products, collections] = await Promise.all([listProducts(), listCollections()])
 
   const staticRoutes = ["", "/products", "/collections", "/guides", "/about", "/disclosure"].map((path) => ({
     url: `${BASE}${path}`,

@@ -3,7 +3,7 @@ import Link from "next/link"
 
 import { Catalog } from "@/components/site/catalog"
 import { NewsletterForm } from "@/components/site/newsletter-form"
-import { products } from "@/lib/products"
+import { listProducts } from "@/lib/catalog"
 
 export const metadata: Metadata = {
   title: "The shortlist",
@@ -13,7 +13,10 @@ export const metadata: Metadata = {
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
 
-export default function ProductsPage() {
+export const dynamic = "force-dynamic"
+
+export default async function ProductsPage() {
+  const products = await listProducts()
   const hours = products.reduce((sum, p) => sum + p.testedHours, 0)
 
   return (
