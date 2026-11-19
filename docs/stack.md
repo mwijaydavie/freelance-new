@@ -132,3 +132,72 @@ photos fit in the repo and cost nothing to serve. Turning it on later is a check
   from the app server.
 - External media must be allow-listed in `next.config.ts` → `images.remotePatterns` (a commented
   example is already there), otherwise `next/image` refuses to optimise it.
+
+---
+
+## 6. Accounts, functions, realtime — what we run and why
+
+### 6.1 Who logs in
+
+| Role | Login today | Right answer |
+|---|---|---|
+| Reader / buyer | **none** | never gate reading. A login wall on an affiliate site is a paywall with no revenue |
+| Editor (you) | one password → httpOnly cookie, 30 days | correct for a solo operator: one field, once a month |
+| Second editor / VA | same password | move to email + magic link with a `genie_users` table and roles when a second person joins |
+| Customer account (orders) | n/a — we do not sell | needed only if Genie ever sells its own stock: guest checkout + optional account |
+
+**The friction maths that decides it.** The plan in `docs/monetisation.md` assumes 10k sessions →
+12% outclick → 4.5% sale. Gating the catalogue behind an account drops the first number by an order of
+magnitude, and search engines — which cannot log in — stop indexing the pages that produce that
+traffic. Every gate is a paid feature; reading is the product.
+
+Accounts also import legal work (consent, deletion requests, breach duties under Tanzania's PDPA and
+GDPR if you serve EU readers). No accounts, no obligations: our single admin cookie is strictly
+necessary, so there is no cookie banner either.
+
+**Trigger to add real user auth:** a second editor, or a feature that genuinely needs identity
+(wishlists, price-drop alerts, a paid tier). The migration is small: a `genie_users` table in the same
+Neon database, `email + magic link` (Better Auth is bundled free up to 60k MAU on Neon's free plan),
+roles owner/editor, and `lib/auth.ts` becomes the only file that changes.
+
+### 6.2 Serverless functions
+
+We already run them — that is what Vercel is. Every dynamic route is a function invocation:
+
+| Route | Kind | Why |
+|---|---|---|
+| `/`, `/products`, `/products/[slug]`, `/collections` | server function (RSC render) | reads Postgres per request, so console edits are live instantly |
+| `/admin/*` | server function + server actions | auth guard, writes, revalidation |
+| `/api/subscribe` | route handler (function) | validates an email, inserts a row |
+| `/guides/*`, `/disclosure` | prebuilt at deploy | static, free, no invocation |
+
+Limits on Hobby: ~2 GB memory, 300 s max, 100 GB bandwidth. A catalogue page render is ~50 ms plus one
+database round-trip — nowhere near any of them.
+
+**"Functions" as a separate product** (Neon Functions, Cloudflare Workers, AWS Lambda) becomes worth
+paying attention to for *scheduled or long-running work*:
+
+- a nightly pass that flags stale picks and untagged affiliate URLs → email you;
+- affiliate-network postbacks / webhooks (Impact, Awin) → insert a commission row;
+- building and sending the Friday email to `genie_subscribers`;
+- image reprocessing when a photo is uploaded.
+
+Today we need none of them, and the first two are a `vercel.json` cron (daily on Hobby) hitting a route
+handler in this same repo — no new vendor, no second deploy surface. Rent a separate functions product
+only when a job outgrows the 300 s limit or must run every minute.
+
+### 6.3 Realtime
+
+Realtime = pushing changes to browsers over a socket (Supabase Realtime, Ably, Pusher, or Postgres
+`LISTEN/NOTIFY` → SSE). It is essential when **many people watch the same data mutate**: chat, live
+bidding, collaborative editing, delivery tracking.
+
+Genie has none of that. The only "live" relationship is *your edit → the public page*, and that is
+already solved more cheaply: pages are `force-dynamic`, so the next request reads the new row, and
+`revalidatePath()` clears the cached shells after a save. Cost: one query. Realtime would add a socket
+layer, a client state cache and a per-connection bill to remove ~0 ms of staleness for readers who are
+not looking at the page anyway.
+
+**Trigger to add it:** a genuinely shared, changing surface — e.g. a live "readers are viewing" counter,
+or two editors in the same form at the same time. Then start with SSE fed by `LISTEN/NOTIFY` (free,
+Postgres-native) before renting a socket service.
