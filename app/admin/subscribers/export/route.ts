@@ -1,9 +1,13 @@
-import { isAdmin } from "@/lib/auth"
+import { isAdmin, isAdminEnabled } from "@/lib/auth"
 import { readSubscribers } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
+  if (!isAdminEnabled()) {
+    return new Response("Not found", { status: 404 })
+  }
+
   if (!(await isAdmin())) {
     return new Response("Unauthorized", { status: 401 })
   }

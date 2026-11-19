@@ -13,6 +13,16 @@ export const ADMIN_COOKIE = "genie_admin"
  * Set ADMIN_PASSWORD in .env.local. The fallback exists so the preview works
  * out of the box; change it before deploying.
  */
+/**
+ * Deployment switch. Set ADMIN_ENABLED="false" on the public Vercel project so
+ * /admin looks like it does not exist there, and run the console as its own
+ * Vercel project (env: ADMIN_ENABLED=true, ADMIN_PASSWORD=…) behind a separate
+ * domain. Same codebase, two deployments, one public surface.
+ */
+export function isAdminEnabled() {
+  return process.env.ADMIN_ENABLED !== "false"
+}
+
 export function adminPassword() {
   return process.env.ADMIN_PASSWORD || "genie-admin"
 }

@@ -59,6 +59,8 @@ Default admin password when `ADMIN_PASSWORD` is unset: **`genie-admin`** (change
 | `/admin/subscribers` | Friday-list signups + CSV export |
 | `/admin/playbook` | The revenue playbook, rendered from `lib/playbook.ts` |
 
+`/admin` is disabled entirely when `ADMIN_ENABLED="false"` — see [deploying separately](docs/deploy.md).
+
 All admin routes are `noindex`, guarded server-side by an httpOnly HMAC cookie, and never rendered
 inside the marketing chrome.
 
@@ -147,12 +149,25 @@ lib/
 docs/monetisation.md         the strategy, in full
 ```
 
-## Deploy
+## Deploy — and shipping the console separately
+
+One codebase, but the console can be its own deployment. `ADMIN_ENABLED="false"` makes every
+`/admin*` request (login included) render the 404 page, so the public host has no admin surface:
+
+| | public project | console project |
+|---|---|---|
+| Domain | `genie.reviews` | `console.genie.reviews` |
+| `ADMIN_ENABLED` | `false` | `true` |
+| `ADMIN_PASSWORD` | — | strong password |
+
+Import the same repo twice in Vercel, set those two env vars, and (optionally) add Vercel Deployment
+Protection to the console project. Full recipe, plus a true monorepo split and the persistence
+options (Vercel KV, Postgres/Drizzle, Turso): [`docs/deploy.md`](docs/deploy.md).
 
 ```bash
 npx vercel        # preview
 npx vercel --prod # production
 ```
 
-Set `ADMIN_PASSWORD` and update `metadataBase` (`app/layout.tsx`) to the real domain. For persistent
-admin edits on Vercel, point `lib/store.ts` at a database (the filesystem is read-only there).
+On Vercel the filesystem is read-only, so the JSON store falls back to memory there — point
+`lib/store.ts` at a database before launch. Update `metadataBase` (`app/layout.tsx`) too.
