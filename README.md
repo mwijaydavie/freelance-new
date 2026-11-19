@@ -18,7 +18,7 @@ and rips itself from the pin outwards.
 | Components | shadcn/ui structure (`components/ui`, `components.json`, `cn()`) |
 | Motion | GSAP + ScrollTrigger, Lenis smooth scroll |
 | Icons | `lucide-react` |
-| Content | Local typed catalogue + JSON store, no CMS required |
+| Data | Postgres (Neon / Supabase / any URL) with an automatic schema, JSON fallback for local dev |
 
 ## Getting started
 
@@ -70,13 +70,13 @@ inside the marketing chrome.
 
 - **Auth:** single shared password (`ADMIN_PASSWORD`), exchanged for an httpOnly cookie.
   Swap for Auth.js/Clerk before handing it to a team — `lib/auth.ts` is the only file that changes.
-- **Data:** `.data/catalog.json` and `.data/subscribers.json` (gitignored). Seeded from
-  `lib/products.ts` on first write. All access goes through `lib/store.ts`, so replacing it with
-  Prisma / Drizzle / Sanity / Vercel KV touches one file.
+- **Data:** Postgres when `DATABASE_URL` is set — tables, indexes and the seed catalogue are created
+  on the first request, so there is no migration step to forget. Without a database it falls back to
+  `.data/*.json` (gitignored) and then to memory. Everything goes through `lib/store.ts`.
 - **No rebuild needed:** catalogue pages are dynamic and read the store per request, so a save in the
   console is live on the site immediately.
-- **Read-only hosting:** on a read-only filesystem writes fall back to memory and the console tells
-  you. Connect a database (or Vercel Blob/KV) for production persistence.
+- **Storage state is visible:** the console header shows a green **Postgres** chip when writes are
+  durable, amber **No database** when they are not — plus a banner on the overview page.
 - **Fields:** name, maker, slug, collection, price, score, badge, image, tested hours, updated date,
   verdict, best-for, full review, pros/cons (one per line), specs and score bars
   (`label | value`), retailer links (`retailer | affiliate URL | price | note`), published/featured.
@@ -106,8 +106,14 @@ review page, collection listing and sitemap entry.
 links; `components/site/affiliate-button.tsx` already ships
 `rel="sponsored nofollow noopener noreferrer"`.
 
-**Newsletter** posts to `/api/subscribe` → `addSubscriber()` in `lib/store.ts`; swap for your ESP
-there.
+**Newsletter** posts to `/api/subscribe` → `addSubscriber()` in `lib/store.ts` → `genie_subscribers`,
+deduped case-insensitively. Swap or mirror it to your ESP there.
+
+**Database** is Postgres. `DATABASE_URL` in, done: `lib/db-schema.ts` creates `genie_products`,
+`genie_subscribers`, `genie_meta` and `genie_schema` on the first request, and seeds the catalogue
+once. `npm run db:migrate` applies it explicitly, `npm run db:print` prints the SQL, and
+`npm run db:smoke` proves the whole store against a real Postgres engine (PGlite/WASM) with no
+server needed. Recipe: [`docs/deploy.md`](docs/deploy.md#persistence--connect-postgres-do-this-before-launch).
 
 **Images** are AI-generated placeholders in `public/products/` (4:5). Swap for real photography.
 
@@ -142,7 +148,10 @@ components/
 lib/
   products.ts                types, seed catalogue, helpers
   catalog.ts                 store-backed reads for public pages
-  store.ts                   JSON store (swap for a DB)
+  store.ts                   store facade: Postgres → JSON → memory
+  store-sql.ts               the actual SQL (products, subscribers)
+  db.ts / db-schema.ts       driver + schema (auto-applied on first request)
+  db-pglite.ts               embedded Postgres for local dev and tests
   auth.ts                    admin session
   playbook.ts                revenue playbook content
   guides.ts                  editorial
@@ -162,12 +171,13 @@ One codebase, but the console can be its own deployment. `ADMIN_ENABLED="false"`
 
 Import the same repo twice in Vercel, set those two env vars, and (optionally) add Vercel Deployment
 Protection to the console project. Full recipe, plus a true monorepo split and the persistence
-options (Vercel KV, Postgres/Drizzle, Turso): [`docs/deploy.md`](docs/deploy.md).
+recipe, and the Postgres setup: [`docs/deploy.md`](docs/deploy.md).
 
 ```bash
 npx vercel        # preview
 npx vercel --prod # production
 ```
 
-On Vercel the filesystem is read-only, so the JSON store falls back to memory there — point
-`lib/store.ts` at a database before launch. Update `metadataBase` (`app/layout.tsx`) too.
+On Vercel the filesystem is read-only, so the JSON fallback degrades to memory: set `DATABASE_URL`
+(Vercel → Storage → Neon/Postgres) before launch, otherwise the console will tell you it is not
+saving. Update `metadataBase` (`app/layout.tsx`) too.

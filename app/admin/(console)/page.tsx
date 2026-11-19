@@ -3,7 +3,7 @@ import Image from "next/image"
 import { ArrowUpRight, BookOpen, CircleAlert, Mail, Plus, Sparkles } from "lucide-react"
 
 import { listCollections } from "@/lib/catalog"
-import { readProducts, readSubscribers } from "@/lib/store"
+import { readProducts, readSubscribers, storeIsDurable } from "@/lib/store"
 import { money, updatedLabel } from "@/lib/products"
 import { revenueMath } from "@/lib/playbook"
 
@@ -109,6 +109,15 @@ export default async function AdminOverview() {
           </Link>
         </div>
       </div>
+
+      {!storeIsDurable() && (
+        <p className="mt-6 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-[12.5px] leading-relaxed text-amber-100">
+          <strong className="font-medium">No database connected.</strong> Edits are held in
+          memory and disappear on the next cold start. Set{" "}
+          <code className="text-amber-50">DATABASE_URL</code> to a Postgres database to make
+          them real — see <code className="text-amber-50">docs/deploy.md</code>.
+        </p>
+      )}
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Published picks" value={String(published.length).padStart(2, "0")} sub={`${collections.length} collections`} />

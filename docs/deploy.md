@@ -76,23 +76,92 @@ gives 90% of the isolation with none of that, which is why it is the default her
 
 ---
 
-## Persistence — the part that matters on Vercel
+## Persistence — connect Postgres (do this before launch)
 
-Vercel's filesystem is **read-only** at runtime. The console writes to `.data/*.json`, which works
-locally and is perfect for previews, but on Vercel the store falls back to memory (the UI tells you
-when that happens).
+Vercel's filesystem is **read-only** at runtime, so `.data/*.json` only works on your machine. The
+store already speaks Postgres; you are one environment variable away from a real database.
 
-Before launch, point `lib/store.ts` at one of:
+```
+lib/store.ts      facade — picks the backend, keeps the JSON fallback
+  ├── lib/store-sql.ts   all SQL (products + subscribers)
+  └── lib/db.ts          driver: node-postgres when DATABASE_URL is set
+        └── lib/db-pglite.ts   embedded Postgres, local dev + tests only
+```
 
-| Option | Effort | Notes |
+### 1. Create the database
+
+Vercel dashboard → your project → **Storage** → **Create Database** → **Neon (Postgres)**. Pick the
+region closest to your readers (`iad1` matches the default Vercel functions region).
+
+Any Postgres works: Neon direct, Supabase (use the **pooler** host, port `6543`), Railway, RDS, or a
+VPS. The app only needs a connection string.
+
+### 2. Add the environment variable
+
+Vercel → Project → **Settings → Environment Variables**:
+
+| Key | Value | Environments |
 |---|---|---|
-| **Vercel KV / Upstash Redis** | ~30 min | `get/set` JSON; good for a 9–50 product catalogue |
-| **Vercel Postgres + Drizzle** | ~2 h | real tables, queries, migrations; best long-term |
-| **Sanity / Contentful** | ~3 h | editor-friendly, but you already have a console |
-| **SQLite + Turso** | ~1 h | SQL, edge-friendly, generous free tier |
+| `DATABASE_URL` | `postgres://user:pass@host/db?sslmode=require` | Production, Preview (and Development for local) |
 
-Nothing else in the app changes: `readProducts()`, `writeProducts()`, `readSubscribers()` and
-`addSubscriber()` are the only surface the pages and server actions touch.
+The code also reads `POSTGRES_URL` and `POSTGRES_PRISMA_URL`, so a Vercel **Storage → Postgres/Neon**
+integration that injects those names works without adding anything by hand — just redeploy.
+
+Use the **pooled** connection string for serverless (Neon: host ends in `-pooler`). Direct
+connections run out of slots once you have a few warm lambdas.
+
+Optional: `DATABASE_POOL_MAX` (default `3`) — connections per lambda instance.
+
+### 3. Redeploy
+
+That's it. The first request runs `lib/db-schema.ts` (tables + indexes), records `genie_schema.v1`,
+and seeds the starting catalogue from `lib/products.ts` exactly once. No migration step to forget.
+
+Want it explicit, in CI or by hand?
+
+```bash
+DATABASE_URL="postgres://…" npm run db:migrate   # apply (idempotent)
+npm run db:print                                 # print the SQL instead
+```
+
+### 4. Verify it is real
+
+- The console header shows a green **Postgres** chip (amber **No database** means it is not wired).
+- Edit a pick, then hit *Deploy* → your edit is still there after a cold start.
+- Locally, `npm run db:smoke` runs the full store — schema, seeding, writes, prune, reset,
+  subscriber dedupe — against a genuine Postgres engine (PGlite/WASM) in two separate processes.
+  No server or network required.
+
+### What is in the database
+
+| Table | Holds |
+|---|---|
+| `genie_products` | one row per pick: scalars as columns, `pros/cons/specs/scores/retailers` as `jsonb`, curated order in `sort_order` |
+| `genie_subscribers` | one row per email (unique on `lower(email)`), plus `source` and `created_at` |
+| `genie_meta` | first-run markers (e.g. the seed claim) |
+| `genie_schema` | applied schema version — bump `SCHEMA_VERSION` when you add a migration |
+
+Saving a pick rewrites the catalogue inside one transaction: upsert every row, then prune anything
+that is no longer in the list. Two operators saving at once cannot interleave into a half-written
+catalogue.
+
+### Operating notes
+
+- **Backups:** Neon/Supabase keep point-in-time history on paid tiers; on free tiers take a manual
+  `pg_dump` before any bulk edit.
+- **Two deployments, one database:** the public project and the console project use the *same*
+  `DATABASE_URL` — that is what makes a console save appear on the site instantly.
+- **No database at all:** the site still builds and runs (JSON files locally, memory on Vercel) and
+  the console says so in amber. Good for a preview, not for launch.
+- **Local SQL without installing Postgres:** `PGLITE_PATH=.data/pg npm run dev` uses the embedded
+  engine and persists to `.data/pg`.
+
+### If you would rather use something else
+
+`readProducts()`, `writeProducts()`, `resetProducts()`, `readSubscribers()` and `addSubscriber()` are
+the only surface the pages and server actions touch — about 40 lines in `lib/store.ts`. Anything with
+a Node client (Prisma, Drizzle, Sanity, Turso, KV) drops in there; the SQL version in
+`lib/store-sql.ts` is a working reference for the shapes.
 
 ## Pre-launch checklist
 
@@ -100,7 +169,7 @@ Nothing else in the app changes: `readProducts()`, `writeProducts()`, `readSubsc
 - [ ] `ADMIN_ENABLED=false` on the public project
 - [ ] Console deployed separately and protected
 - [ ] `metadataBase` in `app/layout.tsx` set to the real domain
-- [ ] Store backed by a database, not `.data/`
+- [ ] `DATABASE_URL` set — console shows a green Postgres chip, not amber
 - [ ] Affiliate URLs replaced with tracked links
 - [ ] Newsletter endpoint pointed at your ESP
 - [ ] `robots.txt` / `sitemap.xml` checked on the production domain

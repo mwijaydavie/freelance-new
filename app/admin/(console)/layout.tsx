@@ -1,14 +1,19 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, Database } from "lucide-react"
 
 import { AdminNav } from "@/components/admin/admin-nav"
 import { isAdmin } from "@/lib/auth"
+import { storeBackend, storeIsDurable, storeLabel } from "@/lib/store"
+import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
 export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
   if (!(await isAdmin())) redirect("/admin/login")
+
+  const backend = storeBackend()
+  const durable = storeIsDurable()
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-[1560px]">
@@ -33,14 +38,33 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
               Reader-supported · independent
             </p>
 
-            <Link
-              href="/"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] text-bone/60 transition-colors hover:border-white/35 hover:text-bone"
-            >
-              View site
-              <ArrowUpRight className="size-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <span
+                title={
+                  durable
+                    ? "Every edit is written to the database."
+                    : "No database connected — edits disappear on the next cold start."
+                }
+                className={cn(
+                  "hidden items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] sm:inline-flex",
+                  durable
+                    ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                    : "border-amber-400/30 bg-amber-400/10 text-amber-200"
+                )}
+              >
+                <Database className="size-3" />
+                {durable ? storeLabel[backend] : "No database"}
+              </span>
+
+              <Link
+                href="/"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] text-bone/60 transition-colors hover:border-white/35 hover:text-bone"
+              >
+                View site
+                <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="mt-3 lg:hidden">
