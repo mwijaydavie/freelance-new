@@ -10,6 +10,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const usingFallback = !process.env.ADMIN_PASSWORD
 
   return (
     <div className="grid min-h-svh place-items-center px-5 py-16">
@@ -69,11 +70,13 @@ export default async function LoginPage({
           </SubmitButton>
         </form>
 
-        <p className="mt-8 rounded-lg border border-white/8 bg-white/[0.02] p-4 text-[11.5px] leading-relaxed text-bone/35">
-          Set <code className="text-bone/60">ADMIN_PASSWORD</code> in{" "}
-          <code className="text-bone/60">.env.local</code> before deploying. The fallback password is{" "}
-          <code className="text-bone/60">genie-admin</code>.
-        </p>
+        {usingFallback && (
+          <p className="mt-8 rounded-lg border border-white/8 bg-white/[0.02] p-4 text-[11.5px] leading-relaxed text-bone/35">
+            Set <code className="text-bone/60">ADMIN_PASSWORD</code> in{" "}
+            <code className="text-bone/60">.env.local</code> before deploying. The fallback password is{" "}
+            <code className="text-bone/60">genie-admin</code>.
+          </p>
+        )}
       </div>
     </div>
   )
