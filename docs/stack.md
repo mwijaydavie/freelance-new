@@ -99,3 +99,36 @@ Friday list (free up to a few thousand subscribers), then more hosting only if b
 
 See [deploy.md](deploy.md#persistence--connect-postgres-do-this-before-launch) for the operational
 details (backups, two-deployment setup, pool size).
+
+---
+
+## 5. Media and accounts — what lives where
+
+Short answer to "where do the pictures and videos live": **pictures live in the repo and are served
+by Vercel's CDN; videos never go in the repo.** There are no user accounts at all — the only login is
+the single admin password.
+
+| What | Where it lives | Cost | Ceiling before it matters |
+|---|---|---|---|
+| **Product photos (now)** | `public/products/*.jpg` — 9 files, **928 KB total**, shipped in the build, served from Vercel's edge, resized + converted to WebP by `next/image` | $0 (Hobby: 100 GB bandwidth/month) | roughly 100–200 MB of images in the repo |
+| **Product photos (later, many)** | Cloudflare R2 or Vercel Blob or Neon object storage (5 GB free, S3-compatible) → add the host to `images.remotePatterns` in `next.config.ts` | R2: 10 GB free, **zero egress fees** | when the repo gets heavy or non-devs upload |
+| **Video** | **Never** `/public` and never Postgres: Cloudflare R2 (free egress) + `<video preload="none">`, or Cloudflare Stream / Mux for adaptive HLS, or an unlisted YouTube embed | R2 $0 → ~$0.015/GB-month; Stream ~$5 per 1,000 min stored | a 60-second 1080p clip is 15–40 MB — one month of traffic can exceed Vercel's whole bandwidth allowance |
+| **User accounts** | none. Nothing on the public site requires a login | $0 | if you add wishlists/alerts, Neon's free plan bundles Better Auth up to 60k MAU — no new vendor |
+| **Admin login** | one shared password (`ADMIN_PASSWORD`) → httpOnly cookie | $0 | when a second editor joins, move to Better Auth / magic links against the same Postgres |
+| **Newsletter** | `/api/subscribe` → `genie_subscribers` table; exporting to an ESP (Buttondown, Resend, ConvertKit) is a CSV away | ESP free up to ~1–2k subscribers | at a few thousand subscribers |
+
+**Why not keep images in Postgres?** It works, and it is the wrong tool: bytes go through the function
+on every request (no CDN cache without extra work), backups and `pg_dump` balloon, and Neon's free
+tier is 1 GB for *everything*. Object storage exists for exactly this and is free at our size.
+
+**Why is object storage off in the Neon project, then?** Because we do not need it yet — the nine
+photos fit in the repo and cost nothing to serve. Turning it on later is a checkbox, not a migration.
+
+**House rules for media, so this stays true:**
+
+- Product photos: 4:5, ~1600 px wide, JPEG/WebP, target **under 250 KB** each. The cards, the hero and
+  the JSON-LD all assume that ratio.
+- Any `<video>`: always a `poster` image, `preload="none"`, and `playsInline`. Never autoplay a file
+  from the app server.
+- External media must be allow-listed in `next.config.ts` → `images.remotePatterns` (a commented
+  example is already there), otherwise `next/image` refuses to optimise it.
