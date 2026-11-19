@@ -88,6 +88,10 @@ lib/store.ts      facade — picks the backend, keeps the JSON fallback
         └── lib/db-pglite.ts   embedded Postgres, local dev + tests only
 ```
 
+> Picking a provider? Neon's free plan is the recommendation — it scales to zero without pausing
+> your project, so nothing needs a keep-alive ping. Full comparison with Supabase and Firebase:
+> [stack.md](stack.md).
+
 ### 1. Create the database
 
 Vercel dashboard → your project → **Storage** → **Create Database** → **Neon (Postgres)**. Pick the
