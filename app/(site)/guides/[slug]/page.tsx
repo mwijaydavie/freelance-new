@@ -8,7 +8,7 @@ import { NewsletterForm } from "@/components/site/newsletter-form"
 import { ReadingProgress } from "@/components/site/reading-progress"
 import { Reveal } from "@/components/site/reveal"
 import { getGuide, guideDate, guides } from "@/lib/guides"
-import { getProduct } from "@/lib/products"
+import { listProducts } from "@/lib/catalog"
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
 
@@ -41,7 +41,10 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const guide = getGuide(slug)
   if (!guide) notFound()
 
-  const linked = guide.productSlugs.map((s) => getProduct(s)).filter(Boolean)
+  const catalogue = await listProducts()
+  const linked = guide.productSlugs
+    .map((s) => catalogue.find((p) => p.slug === s))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p))
   const more = guides.filter((g) => g.slug !== guide.slug)
 
   return (
@@ -156,7 +159,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           </div>
           <div className="mt-10 grid gap-x-7 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {linked.map((p, i) => (
-              <ProductCard key={p!.slug} product={p!} index={i} />
+              <ProductCard key={p.slug} product={p} index={i} />
             ))}
           </div>
         </section>

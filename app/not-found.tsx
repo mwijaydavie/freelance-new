@@ -1,10 +1,14 @@
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { SiteHeader } from "@/components/site/site-header"
+import { SiteFooter } from "@/components/site/site-footer"
 
 export default function NotFound() {
   return (
-    <main className="mx-auto flex min-h-[70svh] w-full max-w-[1440px] flex-col justify-center px-5 py-24 sm:px-8 lg:px-12">
+    <>
+      <SiteHeader />
+      <main className="mx-auto flex min-h-[70svh] w-full max-w-[1440px] flex-col justify-center px-5 py-24 sm:px-8 lg:px-12">
       <p className="label text-electric">404 — nothing on the bench</p>
       <h1 className="mt-6 max-w-[18ch] font-display text-[clamp(2.8rem,7vw,5.6rem)] leading-[0.9] tracking-[-0.045em]">
         This pick has <span className="italic text-electric">gone back.</span>
@@ -21,6 +25,8 @@ export default function NotFound() {
           <Link href="/">Back home</Link>
         </Button>
       </div>
-    </main>
+      </main>
+      <SiteFooter />
+    </>
   )
 }

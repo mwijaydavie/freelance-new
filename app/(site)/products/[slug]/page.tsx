@@ -10,21 +10,14 @@ import { ProductCard } from "@/components/site/product-card"
 import { ScoreRing } from "@/components/site/score-ring"
 import { NewsletterForm } from "@/components/site/newsletter-form"
 import { Reveal } from "@/components/site/reveal"
-import {
-  getCollection,
-  getProduct,
-  money,
-  products,
-  productsIn,
-  updatedLabel,
-} from "@/lib/products"
+import { money, updatedLabel } from "@/lib/products"
+import { collectionMeta } from "@/lib/catalog"
+import { findProduct, listProducts } from "@/lib/catalog"
 import { guides } from "@/lib/guides"
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }))
-}
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
   params,
@@ -32,7 +25,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const product = getProduct(slug)
+  const product = await findProduct(slug)
   if (!product) return { title: "Pick not found" }
   return {
     title: `${product.name} review`,
@@ -47,15 +40,51 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const product = getProduct(slug)
+  const product = await findProduct(slug)
   if (!product) notFound()
 
-  const collection = getCollection(product.collection)
-  const siblings = productsIn(product.collection).filter((p) => p.slug !== product.slug)
+  const collection = collectionMeta(product.collection)
+  const siblings = (await listProducts())
+    .filter((p) => p.collection === product.collection && p.slug !== product.slug)
+    .slice(0, 2)
   const notes = guides.filter((g) => g.productSlugs.includes(product.slug))
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${product.maker} ${product.name}`,
+    image: [`https://genie.reviews${product.image}`],
+    description: product.verdict,
+    brand: { "@type": "Brand", name: product.maker },
+    offers: product.retailers.map((r) => ({
+      "@type": "Offer",
+      price: r.price,
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+      url: r.url,
+      seller: { "@type": "Organization", name: r.name },
+    })),
+    review: {
+      "@type": "Review",
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: (product.score / 10).toFixed(1),
+        bestRating: 10,
+        worstRating: 0,
+      },
+      author: { "@type": "Organization", name: "Genie" },
+      datePublished: product.updated,
+      reviewBody: product.verdict,
+    },
+  }
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ── masthead ── */}
       <section className={`${SHELL} pt-10 lg:pt-14`}>
         <nav aria-label="Breadcrumb" className="text-[11px] uppercase tracking-[0.16em] text-ink/35">

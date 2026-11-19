@@ -7,3 +7,8 @@ dist
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# admin store (local JSON)
+.data
+
+!.env.example

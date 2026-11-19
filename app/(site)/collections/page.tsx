@@ -3,7 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { MoveUpRight } from "lucide-react"
 
-import { collections, productsIn } from "@/lib/products"
+import { listCollections } from "@/lib/catalog"
 
 export const metadata: Metadata = {
   title: "Collections",
@@ -12,7 +12,10 @@ export const metadata: Metadata = {
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
 
-export default function CollectionsPage() {
+export const dynamic = "force-dynamic"
+
+export default async function CollectionsPage() {
+  const collections = await listCollections()
   return (
     <main>
       <section className={`${SHELL} pb-10 pt-12 lg:pt-16`}>
@@ -29,7 +32,7 @@ export default function CollectionsPage() {
       <section className={`${SHELL} pb-20`}>
         <div className="divide-y divide-ink/12 border-y border-ink/12">
           {collections.map((c) => {
-            const items = productsIn(c.id)
+            const items = c.items
             return (
               <Link
                 key={c.id}

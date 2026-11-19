@@ -10,13 +10,12 @@ import { ScoreRing } from "@/components/site/score-ring"
 import { NewsletterForm } from "@/components/site/newsletter-form"
 import { Reveal } from "@/components/site/reveal"
 import { Badge } from "@/components/ui/badge"
-import { collections, getCollectionBySlug, money, productsIn, updatedLabel } from "@/lib/products"
+import { listCollections, findCollection } from "@/lib/catalog"
+import { money, updatedLabel } from "@/lib/products"
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
 
-export function generateStaticParams() {
-  return collections.map((c) => ({ slug: c.slug }))
-}
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
   params,
@@ -24,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const collection = getCollectionBySlug(slug)
+  const collection = await findCollection(slug)
   if (!collection) return { title: "Collection not found" }
   return {
     title: `${collection.title} picks`,
@@ -35,14 +34,15 @@ export async function generateMetadata({
 
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const collection = getCollectionBySlug(slug)
+  const collection = await findCollection(slug)
   if (!collection) notFound()
 
-  const items = productsIn(collection.id)
+  const items = collection.items
   const top = items[0]
   const others = items.slice(1)
-  const index = collections.findIndex((c) => c.id === collection.id)
-  const next = collections[(index + 1) % collections.length]
+  const allCollections = await listCollections()
+  const index = allCollections.findIndex((c) => c.id === collection.id)
+  const next = allCollections[(index + 1) % allCollections.length]
 
   return (
     <main>
@@ -70,7 +70,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
             <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.14em] text-ink/35">
               <span>{String(items.length).padStart(2, "0")} picks</span>
               <span>{items.reduce((s, p) => s + p.testedHours, 0)} h tested</span>
-              <span>Updated {updatedLabel(items[0].updated)}</span>
+              {items[0] && <span>Updated {updatedLabel(items[0].updated)}</span>}
             </div>
           </div>
 
@@ -94,6 +94,18 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
 
       {/* top pick feature */}
       <section className={`${SHELL} mt-16 lg:mt-24`}>
+        {!top && (
+          <div className="border border-ink/12 bg-white/45 p-10 text-center">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-ink/40">On the bench</p>
+            <p className="mt-3 font-display text-[clamp(1.5rem,2.6vw,2.2rem)] tracking-[-0.03em]">
+              Nothing published in this room yet.
+            </p>
+            <p className="mt-2 text-[13px] text-ink/50">
+              The next pick lands on Friday — add it from the admin console.
+            </p>
+          </div>
+        )}
+        {top && (
         <div className="grid gap-0 border border-ink/12 bg-white/45 lg:grid-cols-12">
           <div className="relative min-h-[320px] lg:col-span-6">
             <Image
@@ -142,6 +154,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
             </div>
           </div>
         </div>
+        )}
       </section>
 
       {/* the rest */}

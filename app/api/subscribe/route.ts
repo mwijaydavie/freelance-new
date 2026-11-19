@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { addSubscriber } from "@/lib/store"
+
 /**
  * Newsletter capture endpoint.
  *
@@ -23,8 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email" }, { status: 422 })
   }
 
-  // Replace with a real provider call.
-  console.log(`[genie] newsletter signup · ${email} · ${source}`)
+  // Persist locally so the admin console has something real to show.
+  // Replace or extend this with your ESP (Buttondown, ConvertKit, Resend…).
+  const saved = await addSubscriber(email, source)
+  if (!saved.ok) {
+    return NextResponse.json({ ok: false, error: "Could not save that email" }, { status: 500 })
+  }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, duplicate: Boolean("duplicate" in saved && saved.duplicate) })
 }

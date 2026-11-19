@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next"
 
 import "./globals.css"
-import { SiteHeader } from "@/components/site/site-header"
-import { SiteFooter } from "@/components/site/site-footer"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://genie.reviews"),
@@ -36,34 +34,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-svh bg-bone antialiased">
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-ink focus:px-5 focus:py-3 focus:text-sm focus:text-bone"
-        >
-          Skip to content
-        </a>
-        <div className="border-b border-white/10 bg-ink text-bone">
-          <div className="mx-auto flex h-9 w-full max-w-[1440px] items-center justify-center gap-3 px-5 sm:px-8 lg:px-12">
-            <span className="hidden size-1 rounded-full bg-electric sm:block" />
-            <p className="text-[10.5px] uppercase tracking-[0.2em] text-bone/60">
-              Issue 04 is live — the desk edit, three picks
-            </p>
-            <a
-              href="/guides/the-desk-reset"
-              className="text-[10.5px] uppercase tracking-[0.2em] text-bone/90 underline decoration-bone/30 underline-offset-4 transition-colors hover:text-electric"
-            >
-              Read the notes
-            </a>
-          </div>
-        </div>
-        <noscript>
-          <style>{`.reveal{opacity:1!important;transform:none!important}`}</style>
-        </noscript>
-        <SiteHeader />
-        <div id="main">{children}</div>
-        <SiteFooter />
-      </body>
+      <body className="min-h-svh bg-bone antialiased">{children}</body>
     </html>
   )
 }

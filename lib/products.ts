@@ -9,6 +9,10 @@ export type Retailer = {
 
 export type Product = {
   slug: string
+  /** Shown on the public site. Unpublished picks stay in the admin only. */
+  published?: boolean
+  /** Promoted on the home page and the shortlist. */
+  featured?: boolean
   name: string
   maker: string
   collection: CollectionId
@@ -83,6 +87,7 @@ export const products: Product[] = [
     collection: "audio",
     price: 349,
     score: 94,
+    featured: true,
     badge: "editor's pick",
     verdict: "The first over-ear in years that gets tuning, comfort and price in the same room.",
     bestFor: "Working through a noisy day",
@@ -214,6 +219,7 @@ export const products: Product[] = [
     collection: "desk",
     price: 189,
     score: 92,
+    featured: true,
     badge: "editor's pick",
     verdict: "A keyboard you stop thinking about, which is the highest compliment a keyboard can get.",
     bestFor: "Eight-hour typing days",
@@ -345,6 +351,7 @@ export const products: Product[] = [
     collection: "home",
     price: 129,
     score: 93,
+    featured: true,
     badge: "editor's pick",
     verdict: "A kettle that pours like it costs three times as much, and looks like it knows it.",
     bestFor: "Pour-over mornings",
@@ -470,6 +477,9 @@ export const products: Product[] = [
     ],
   },
 ]
+
+/** Lightweight list for selects and filters (safe in client components). */
+export const collectionOptions = collections.map((c) => ({ id: c.id, title: c.title }))
 
 export function getProduct(slug: string) {
   return products.find((p) => p.slug === slug)

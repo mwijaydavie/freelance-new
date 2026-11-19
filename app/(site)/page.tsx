@@ -8,7 +8,8 @@ import { ProductCard } from "@/components/site/product-card"
 import { ScoreRing } from "@/components/site/score-ring"
 import { NewsletterForm } from "@/components/site/newsletter-form"
 import { Reveal } from "@/components/site/reveal"
-import { collections, featured, money, products } from "@/lib/products"
+import { money } from "@/lib/products"
+import { featuredProducts, listCollections, listProducts } from "@/lib/catalog"
 import { guideDate, guides } from "@/lib/guides"
 
 const SHELL = "mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-12"
@@ -39,8 +40,16 @@ const METHOD = [
   },
 ]
 
-export default function HomePage() {
+export const dynamic = "force-dynamic"
+
+export default async function HomePage() {
+  const [featured, collections, products] = await Promise.all([
+    featuredProducts(3),
+    listCollections(),
+    listProducts(),
+  ])
   const lead = featured[0]
+  const hours = products.reduce((sum, p) => sum + p.testedHours, 0)
   const notes = guides.slice(0, 3)
 
   return (
@@ -57,29 +66,36 @@ export default function HomePage() {
           </span>
           <div className="grid items-end gap-14 lg:grid-cols-12 lg:gap-8">
             <div className="lg:col-span-7">
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3" data-anim="hero">
                 <Badge variant="outline" className="border-ink/20 bg-transparent">
                   <span className="size-1.5 rounded-full bg-electric" />
                   Issue 04 · November 2026
                 </Badge>
                 <span className="text-[11px] uppercase tracking-[0.18em] text-ink/40">
-                  {products.length} picks live
+                  {String(products.length).padStart(2, "0")} picks live
                 </span>
               </div>
 
               <h1 className="mt-7 font-display text-[clamp(2.85rem,7.2vw,6.2rem)] leading-[0.9] tracking-[-0.045em]">
-                Buy the one
-                <br />
-                that&apos;s <span className="italic text-electric">worth it.</span>
+                <span className="block overflow-hidden pb-[0.06em]">
+                  <span data-anim="line" className="block">
+                    Buy the one
+                  </span>
+                </span>
+                <span className="block overflow-hidden pb-[0.06em]">
+                  <span data-anim="line" className="block">
+                    that&apos;s <em className="italic text-electric">worth it.</em>
+                  </span>
+                </span>
               </h1>
 
-              <p className="mt-8 max-w-[48ch] text-[15.5px] leading-[1.75] text-ink/60">
+              <p className="mt-8 max-w-[48ch] text-[15.5px] leading-[1.75] text-ink/60" data-anim="hero">
                 We buy every product at retail, live with it for a month, then keep exactly one per
                 category. Audio, desk and home — nine picks, no sponsored rankings, no forty tabs of
                 research.
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4" data-anim="hero">
                 <Button asChild size="lg" className="gap-3 pl-7 pr-6">
                   <Link href="/products">
                     Browse the shortlist
@@ -94,10 +110,10 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              <dl className="mt-14 grid max-w-[460px] grid-cols-3 gap-6 border-t border-ink/12 pt-6">
+              <dl className="mt-14 grid max-w-[460px] grid-cols-3 gap-6 border-t border-ink/12 pt-6" data-anim="hero">
                 {[
                   ["09", "picks live"],
-                  ["1,780", "hours tested"],
+                  [hours.toLocaleString("en-US"), "hours tested"],
                   ["00", "paid placements"],
                 ].map(([v, k]) => (
                   <div key={k}>
@@ -110,7 +126,7 @@ export default function HomePage() {
 
             {/* featured pick */}
             <div className="relative lg:col-span-5">
-              <Reveal className="relative pb-14 sm:pb-12">
+              <div className="relative pb-14 sm:pb-12" data-anim="card">
                 <div className="relative aspect-[4/5] overflow-hidden bg-paper">
                   <Image
                     src={lead.image}
@@ -146,7 +162,7 @@ export default function HomePage() {
                     </span>
                   </div>
                 </Link>
-              </Reveal>
+              </div>
             </div>
           </div>
         </div>
@@ -229,14 +245,16 @@ export default function HomePage() {
           {collections.map((c, i) => (
             <Reveal key={c.id} delay={i * 90}>
               <Link href={`/collections/${c.slug}`} className="group relative block overflow-hidden bg-ink">
-                <div className="relative aspect-[3/4]">
-                  <Image
-                    src={c.image}
-                    alt={c.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover transition-transform duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
-                  />
+                <div className="relative aspect-[3/4] overflow-hidden" data-parallax-scope>
+                  <div data-parallax="6" className="absolute inset-x-0 -inset-y-[7%]">
+                    <Image
+                      src={c.image}
+                      alt={c.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-[1000ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]"
+                    />
+                  </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/25 to-transparent opacity-90" />
                   <div className="absolute inset-0 flex flex-col justify-end p-6 text-bone lg:p-7">
                     <span className="text-[10px] uppercase tracking-[0.24em] text-bone/60">{c.kicker}</span>
